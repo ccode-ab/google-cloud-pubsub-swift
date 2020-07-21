@@ -13,7 +13,6 @@ public final class PublisherDriver {
         Self.default = self
     }
 
-    /// Default datastore. `nil` if bootstrap has not been called yet.
     public private(set) static var `default`: PublisherDriver!
 
     // MARK: - Bootstrap
@@ -23,18 +22,10 @@ public final class PublisherDriver {
         case tokenProviderFailed
     }
 
-    /// Bootstrap the datastore. Authroizes and prepares connection to remote. See `bootstrap(configuration:,group:)` for more options.
-    /// - Parameters:
-    ///   - eventLoopGroup: Event loop group to use.
-    /// - Returns: Future for datastore.
     public static func bootstrap(on eventLoopGroup: EventLoopGroup) -> EventLoopFuture<PublisherDriver> {
         bootstrap(group: eventLoopGroup)
     }
 
-    /// Bootstrap the datastore. Authroizes and prepares connection to remote.
-    /// - Parameters:
-    ///   - eventLoopGroup: Event loop group to use.
-    /// - Returns: Future for datastore.
     @discardableResult
     public static func bootstrap(group eventLoopGroup: EventLoopGroup) -> EventLoopFuture<PublisherDriver> {
         bootstrapForProduction(on: eventLoopGroup)
