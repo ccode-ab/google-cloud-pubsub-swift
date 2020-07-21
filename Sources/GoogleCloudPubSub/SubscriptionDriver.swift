@@ -3,17 +3,18 @@ import GRPC
 import NIO
 import OAuth2
 
-public final class PublisherDriver {
+public final class SubscriberDriver {
 
-    let raw: Google_Pubsub_V1_PublisherClient
+    let raw: Google_Pubsub_V1_SubscriberClient
+    static let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
-    private init(raw: Google_Pubsub_V1_PublisherClient) {
+    private init(raw: Google_Pubsub_V1_SubscriberClient) {
         self.raw = raw
 
         Self.default = self
     }
 
-    public private(set) static var `default`: PublisherDriver!
+    public private(set) static var `default`: SubscriberDriver!
 
     // MARK: - Bootstrap
 
@@ -22,19 +23,15 @@ public final class PublisherDriver {
         case tokenProviderFailed
     }
 
-    public static func bootstrap(on eventLoopGroup: EventLoopGroup) -> EventLoopFuture<PublisherDriver> {
-        bootstrap(group: eventLoopGroup)
-    }
-
     @discardableResult
-    public static func bootstrap(group eventLoopGroup: EventLoopGroup) -> EventLoopFuture<PublisherDriver> {
-        bootstrapForProduction(on: eventLoopGroup)
+    public static func bootstrap() -> EventLoopFuture<SubscriberDriver> {
+        bootstrapForProduction()
     }
 
-    private static func bootstrapForProduction(on eventLoopGroup: EventLoopGroup) -> EventLoopFuture<PublisherDriver> {
-        let promise = eventLoopGroup.next().makePromise(of: PublisherDriver.self)
+    private static func bootstrapForProduction() -> EventLoopFuture<SubscriberDriver> {
+        let promise = eventLoopGroup.next().makePromise(of: SubscriberDriver.self)
 
-        guard let provider = DefaultTokenProvider(scopes: ["https://www.googleapis.com/auth/pubsub"]) else {
+        guard let provider = DefaultTokenProvider(scopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/pubsub"]) else {
             promise.fail(BootstrapError.noTokenProvider)
             return promise.futureResult
         }
@@ -53,9 +50,9 @@ public final class PublisherDriver {
                 let callOptions = CallOptions(
                     customMetadata: ["authorization": "Bearer \(accessToken)"]
                 )
-                let client = Google_Pubsub_V1_PublisherClient(channel: channel, defaultCallOptions: callOptions)
+                let client = Google_Pubsub_V1_SubscriberClient(channel: channel, defaultCallOptions: callOptions)
 
-                promise.succeed(PublisherDriver(raw: client))
+                promise.succeed(SubscriberDriver(raw: client))
             }
         } catch {
             promise.fail(error)
@@ -67,12 +64,13 @@ public final class PublisherDriver {
     // MARK: - Shutdown
 
     public func shutdown() -> EventLoopFuture<Void> {
-        raw.channel.close()
+        Self.eventLoopGroup.shutdownGracefully { _ in }
+        return raw.channel.close()
     }
 
     // MARK: - PubSub
 
-    public func pubSubPublisher(on eventLoop: EventLoop) -> PubSubPublisher {
-        PubSubPublisher(driver: self, eventLoop: eventLoop)
+    public func pubSubSubscriber() -> PubSubSubscriber {
+        PubSubSubscriber(driver: self, eventLoop: Self.eventLoopGroup.next())
     }
 }
