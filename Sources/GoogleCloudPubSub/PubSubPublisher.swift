@@ -20,7 +20,7 @@ public final class PubSubPublisher {
 
     // MARK: -
 
-    public func publish(to topic: Topic, messages: [Message]) -> EventLoopFuture<[Message]> {
+    public func publish(to topic: Topic, messages: [PublisherMessage]) -> EventLoopFuture<[PublisherMessage]> {
         let request = Google_Pubsub_V1_PublishRequest.with {
             $0.topic = topic.rawValue
             $0.messages = messages.map { message in
@@ -31,7 +31,7 @@ public final class PubSubPublisher {
             }
         }
 
-        return driver.raw
+        return driver.rawClient
             .publish(request)
             .response
             .hop(to: eventLoop)
@@ -42,17 +42,17 @@ public final class PubSubPublisher {
             }
     }
 
-    public func publish(to topic: Topic, message: Message) -> EventLoopFuture<Message> {
+    public func publish(to topic: Topic, message: PublisherMessage) -> EventLoopFuture<PublisherMessage> {
         publish(to: topic, messages: [message]).map { $0[0] }
     }
 
-    public func publish(to topic: Topic, data: Data, attributes: [String: String] = [:]) -> EventLoopFuture<Message> {
-        publish(to: topic, messages: [Message(data: data, attributes: attributes)]).map { $0[0] }
+    public func publish(to topic: Topic, data: Data, attributes: [String: String] = [:]) -> EventLoopFuture<PublisherMessage> {
+        publish(to: topic, messages: [PublisherMessage(data: data, attributes: attributes)]).map { $0[0] }
     }
 
-    public func publish<Element: Encodable>(to topic: Topic, dataEncoding element: Element, attributes: [String: String] = [:]) -> EventLoopFuture<Message> {
+    public func publish<Element: Encodable>(to topic: Topic, dataEncoding element: Element, attributes: [String: String] = [:]) -> EventLoopFuture<PublisherMessage> {
         do {
-            let message = try Message(dataEncoding: element, attributes: attributes)
+            let message = try PublisherMessage(dataEncoding: element, attributes: attributes)
             return publish(to: topic, messages: [message]).map { $0[0] }
         } catch {
             return eventLoop.makeFailedFuture(error)
