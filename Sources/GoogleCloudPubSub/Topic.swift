@@ -1,6 +1,8 @@
 import Foundation
 
-public struct Topic: Equatable, Hashable {
+public struct Topics {}
+
+public struct Topic<Element: Codable>: Equatable, Hashable {
 
     public let name: String
 

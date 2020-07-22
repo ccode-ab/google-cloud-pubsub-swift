@@ -48,8 +48,8 @@ public final class SubscriberDriver: Driver {
     override public func shutdown() {
         logger.info("Shutting down...")
 
-        if !subscribers.isEmpty {
-            subscribers.forEach { $0.isShutdown = true }
+        if !subscriberShutdowns.isEmpty {
+            subscriberShutdowns.forEach { $0() }
         }
 
         super.shutdown()
@@ -57,5 +57,5 @@ public final class SubscriberDriver: Driver {
 
     // MARK: - Subscribers
 
-    var subscribers = [PubSubSubscriber]()
+    var subscriberShutdowns = [() -> ()]()
 }

@@ -14,7 +14,7 @@ public struct PublisherMessage {
         self.attributes = attributes
     }
 
-    public init<Element: Encodable>(dataEncoding element: Element, attributes: [String: String] = [:]) throws {
+    public init<Element: Encodable>(data element: Element, attributes: [String: String] = [:]) throws {
         let data = try JSONEncoder().encode(element)
         self.init(data: data, attributes: attributes)
     }

@@ -20,10 +20,11 @@ public final class PubSubPublisher {
 
     // MARK: - Verify
 
-    private static var verifiedTopics = [Topic]()
+    private static var verifiedTopics = [Int]()
 
-    private func verify(topic: Topic) -> EventLoopFuture<Void> {
-        if Self.verifiedTopics.contains(topic) {
+    private func verify<Element>(topic: Topic<Element>) -> EventLoopFuture<Void> {
+        let hashValue = topic.rawValue.hashValue
+        if Self.verifiedTopics.contains(hashValue) {
             return eventLoop.makeSucceededFuture(())
         }
 
@@ -40,9 +41,11 @@ public final class PubSubPublisher {
             .whenComplete { result in
                 switch result {
                 case .success:
+                    Self.verifiedTopics.append(hashValue)
                     promise.succeed(())
                 case .failure(let error):
                     if "\(error)" == "alreadyExists (6): Topic already exists" {
+                        Self.verifiedTopics.append(hashValue)
                         promise.succeed(())
                     } else {
                         promise.fail(error)
@@ -55,7 +58,7 @@ public final class PubSubPublisher {
 
     // MARK: - Publish
 
-    public func publish(to topic: Topic, messages: [PublisherMessage]) -> EventLoopFuture<[PublisherMessage]> {
+    public func publish<Element>(to topic: Topic<Element>, messages: [PublisherMessage]) -> EventLoopFuture<[PublisherMessage]> {
         let request = Google_Pubsub_V1_PublishRequest.with {
             $0.topic = topic.rawValue
             $0.messages = messages.map { message in
@@ -84,17 +87,17 @@ public final class PubSubPublisher {
         }
     }
 
-    public func publish(to topic: Topic, message: PublisherMessage) -> EventLoopFuture<PublisherMessage> {
+    public func publish<Element>(to topic: Topic<Element>, message: PublisherMessage) -> EventLoopFuture<PublisherMessage> {
         publish(to: topic, messages: [message]).map { $0[0] }
     }
 
-    public func publish(to topic: Topic, data: Data, attributes: [String: String] = [:]) -> EventLoopFuture<PublisherMessage> {
+    public func publish<Element>(to topic: Topic<Element>, data: Data, attributes: [String: String] = [:]) -> EventLoopFuture<PublisherMessage> {
         publish(to: topic, messages: [PublisherMessage(data: data, attributes: attributes)]).map { $0[0] }
     }
 
-    public func publish<Element: Encodable>(to topic: Topic, dataEncoding element: Element, attributes: [String: String] = [:]) -> EventLoopFuture<PublisherMessage> {
+    public func publish<Element: Encodable>(to topic: Topic<Element>, data element: Element, attributes: [String: String] = [:]) -> EventLoopFuture<PublisherMessage> {
         do {
-            let message = try PublisherMessage(dataEncoding: element, attributes: attributes)
+            let message = try PublisherMessage(data: element, attributes: attributes)
             return publish(to: topic, messages: [message]).map { $0[0] }
         } catch {
             return eventLoop.makeFailedFuture(error)

@@ -2,9 +2,9 @@ import XCTest
 import NIO
 import GoogleCloudPubSub
 
-extension Subscription {
+extension Subscriptions {
 
-    static let test = Subscription(name: "test", topic: .test)
+    static let test = Subscription(name: "test", topic: Topics.test)
 }
 
 final class SubscriberTestCase: XCTestCase {
@@ -24,7 +24,7 @@ final class SubscriberTestCase: XCTestCase {
         var receivedMessage: SubscriberMessage?
 
         // Recive message
-        PubSubSubscriber.receive(from: .test, use: { message in
+        PubSubSubscriber.receive(from: Subscriptions.test, use: { message in
             receivedMessage = message
             expectation.fulfill()
             return message.eventLoop.makeSucceededFuture(())
@@ -32,7 +32,7 @@ final class SubscriberTestCase: XCTestCase {
 
         // Publish message
         publishedMessage = try! PubSubPublisher.default(on: eventLoopGroup.next())
-            .publish(to: .test, data: "Hello".data(using: .utf8)!)
+            .publish(to: Topics.test, data: "Hello".data(using: .utf8)!)
             .wait()
 
         // Wait

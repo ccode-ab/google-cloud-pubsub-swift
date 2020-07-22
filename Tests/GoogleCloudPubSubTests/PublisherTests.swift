@@ -1,9 +1,14 @@
 import XCTest
 import GoogleCloudPubSub
 
-extension Topic {
+struct Message: Codable {
 
-    static let test = Topic(name: "test")
+    let text: String
+}
+
+extension Topics {
+
+    static let test = Topic<Message>(name: "test")
 }
 
 final class PublisherTests: XCTestCase {
@@ -13,7 +18,7 @@ final class PublisherTests: XCTestCase {
         defer { pubSub.shutdown() }
 
         _ = try PubSubPublisher.default(on: pubSub.eventLoopGroup.next())
-            .publish(to: .test, data: "Hello".data(using: .utf8)!)
+            .publish(to: Topics.test, data: "Hello".data(using: .utf8)!)
             .wait()
     }
 }

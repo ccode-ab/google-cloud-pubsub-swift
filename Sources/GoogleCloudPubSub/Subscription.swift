@@ -1,9 +1,11 @@
 import Foundation
 
-public struct Subscription: Equatable, Hashable {
+public struct Subscriptions {}
+
+public struct Subscription<Element: Codable>: Equatable, Hashable {
 
     public let name: String
-    public let topic: Topic
+    public let topic: Topic<Element>
 
     public let labels: [String: String]
 
@@ -14,10 +16,10 @@ public struct Subscription: Equatable, Hashable {
 
     public struct DeadLetterPolicy: Equatable, Hashable {
 
-        public let topic: Topic
+        public let topic: Topic<Element>
         public let maxDeliveryAttempts: Int32
 
-        public init(topic: Topic, maxDeliveryAttempts: Int32) {
+        public init(topic: Topic<Element>, maxDeliveryAttempts: Int32) {
             self.topic = topic
             self.maxDeliveryAttempts = maxDeliveryAttempts
         }
@@ -25,7 +27,7 @@ public struct Subscription: Equatable, Hashable {
 
     public let deadLetterPolicy: DeadLetterPolicy?
 
-    public init(name: String, topic: Topic, labels: [String: String] = [:], retainAcknowledgedMessages: Bool = false, acknowledgeDeadline: TimeInterval = 10, expirationPolicyDuration: TimeInterval = 3600 * 24 * 31, messageRetentionDuration: TimeInterval = 3600 * 24 * 6, deadLetterPolicy: DeadLetterPolicy? = nil) {
+    public init(name: String, topic: Topic<Element>, labels: [String: String] = [:], retainAcknowledgedMessages: Bool = false, acknowledgeDeadline: TimeInterval = 10, expirationPolicyDuration: TimeInterval = 3600 * 24 * 31, messageRetentionDuration: TimeInterval = 3600 * 24 * 6, deadLetterPolicy: DeadLetterPolicy? = nil) {
         self.name = name
         self.topic = topic
         self.labels = labels

@@ -2,23 +2,27 @@ import Foundation
 import GRPC
 import NIO
 
-public final class PubSubSubscriber {
+private var verifiedSubscriptions = [Int]()
+
+public final class PubSubSubscriber<Element: Codable> {
 
     public typealias Handler = (SubscriberMessage) throws -> EventLoopFuture<Void>
 
     let driver: SubscriberDriver
-    let subscription: Subscription
+    let subscription: Subscription<Element>
     let handler: Handler
 
-    init(driver: SubscriberDriver, subscription: Subscription, handler: @escaping Handler) {
+    init(driver: SubscriberDriver, subscription: Subscription<Element>, handler: @escaping Handler) {
         self.driver = driver
         self.subscription = subscription
         self.handler = handler
     }
 
-    public static func receive(from subscription: Subscription, use handler: @escaping Handler, driver: SubscriberDriver = .default) {
+    public static func receive(from subscription: Subscription<Element>, use handler: @escaping Handler, driver: SubscriberDriver = .default) {
         let subscriber = PubSubSubscriber(driver: driver, subscription: subscription, handler: handler)
-        driver.subscribers.append(subscriber)
+        driver.subscriberShutdowns.append({
+            subscriber.isShutdown = true
+        })
 
         DispatchQueue(label: "Pub/Sub Subscriber: " + subscription.rawValue, qos: .default).async {
             subscriber.run()
@@ -50,11 +54,10 @@ public final class PubSubSubscriber {
 
     // MARK: - Verify
 
-    private static var verifiedSubscriptions = [Subscription]()
-
-    private func verify(subscription: Subscription) -> EventLoopFuture<Void> {
+    private func verify<Element>(subscription: Subscription<Element>) -> EventLoopFuture<Void> {
+        let hashValue = subscription.rawValue.hashValue
         let eventLoop = driver.eventLoopGroup.next()
-        if Self.verifiedSubscriptions.contains(subscription) {
+        if verifiedSubscriptions.contains(hashValue) {
             return eventLoop.makeSucceededFuture(())
         }
 
@@ -88,9 +91,11 @@ public final class PubSubSubscriber {
             .whenComplete { result in
                 switch result {
                 case .success:
+                    verifiedSubscriptions.append(hashValue)
                     promise.succeed(())
                 case .failure(let error):
                     if "\(error)" == "alreadyExists (6): Subscription already exists" {
+                        verifiedSubscriptions.append(hashValue)
                         promise.succeed(())
                     } else {
                         promise.fail(error)
