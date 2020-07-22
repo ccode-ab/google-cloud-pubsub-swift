@@ -18,7 +18,42 @@ public final class PubSubPublisher {
         PublisherDriver.default.pubSubPublisher(on: eventLoop)
     }
 
-    // MARK: -
+    // MARK: - Verify
+
+    private static var verifiedTopics = [Topic]()
+
+    private func verify(topic: Topic) -> EventLoopFuture<Void> {
+        if Self.verifiedTopics.contains(topic) {
+            return eventLoop.makeSucceededFuture(())
+        }
+
+        let request = Google_Pubsub_V1_Topic.with {
+            $0.name = topic.rawValue
+            $0.labels = topic.labels
+        }
+
+        let promise = eventLoop.makePromise(of: Void.self)
+
+        driver.rawClient
+            .createTopic(request)
+            .response
+            .whenComplete { result in
+                switch result {
+                case .success:
+                    promise.succeed(())
+                case .failure(let error):
+                    if "\(error)" == "alreadyExists (6): Topic already exists" {
+                        promise.succeed(())
+                    } else {
+                        promise.fail(error)
+                    }
+                }
+        }
+
+        return promise.futureResult
+    }
+
+    // MARK: - Publish
 
     public func publish(to topic: Topic, messages: [PublisherMessage]) -> EventLoopFuture<[PublisherMessage]> {
         let request = Google_Pubsub_V1_PublishRequest.with {
@@ -31,19 +66,22 @@ public final class PubSubPublisher {
             }
         }
 
-        return driver.rawClient
-            .publish(request)
-            .response
-            .hop(to: eventLoop)
-            .map { response in
-                var messages = messages
-                for (index, id) in response.messageIds.enumerated(){
-                    self.driver.logger.info("Published message", metadata: ["message-id": .string(id)])
+        return verify(topic: topic)
+            .flatMap {
+                self.driver.rawClient
+                    .publish(request)
+                    .response
+                    .hop(to: self.eventLoop)
+                    .map { response in
+                        var messages = messages
+                        for (index, id) in response.messageIds.enumerated(){
+                            self.driver.logger.info("Published message", metadata: ["message-id": .string(id)])
 
-                    messages[index].id = id
+                            messages[index].id = id
+                        }
+                        return messages
                 }
-                return messages
-            }
+        }
     }
 
     public func publish(to topic: Topic, message: PublisherMessage) -> EventLoopFuture<PublisherMessage> {
