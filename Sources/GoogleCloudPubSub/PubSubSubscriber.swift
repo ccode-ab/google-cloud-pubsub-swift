@@ -35,7 +35,7 @@ public final class PubSubSubscriber {
                 try pull().wait()
             } catch {
                 if !isShutdown {
-                    print("Failed to pull: \(error)")
+                    driver.logger.error("Failed to pull: \(error)")
                 }
             }
         }
@@ -58,8 +58,6 @@ public final class PubSubSubscriber {
     // MARK: - Pull
 
     private func pull() -> EventLoopFuture<Void> {
-        print("Pulling...")
-
         let request = Google_Pubsub_V1_PullRequest.with {
             $0.subscription = subscription.rawValue
             $0.maxMessages = 100
@@ -71,6 +69,9 @@ public final class PubSubSubscriber {
         return pull
             .response
             .map { response in
+                guard !response.receivedMessages.isEmpty
+                    else { return () }
+
                 print("Received messages: \(response.receivedMessages.count)")
 
                 var allFutures: EventLoopFuture<Void>?
@@ -86,6 +87,8 @@ public final class PubSubSubscriber {
                     )
 
                     // Handle message
+                    self.driver.logger.info("Handling message", metadata: ["message-id": .string(rawMessage.messageID)])
+
                     do {
                         let future = try self.handler(message)
 
@@ -95,7 +98,7 @@ public final class PubSubSubscriber {
                             _ = self.acknowledge(id: ackID)
                         }
                         future.whenFailure { error in
-                            print("Failed to handle message: \(error)")
+                            self.driver.logger.error("Failed to handle message: \(error)", metadata: ["message-id": .string(rawMessage.messageID)])
                         }
 
                         // Keep track of all handler futures
@@ -105,7 +108,7 @@ public final class PubSubSubscriber {
                             allFutures = future
                         }
                     } catch {
-                        print("Failed to handle message: \(error)")
+                        self.driver.logger.error("Failed to handle message: \(error)", metadata: ["message-id": .string(rawMessage.messageID)])
                     }
                 }
 

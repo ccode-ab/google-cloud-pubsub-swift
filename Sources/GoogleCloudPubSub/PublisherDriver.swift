@@ -2,10 +2,13 @@ import Foundation
 import GRPC
 import NIO
 import OAuth2
+import Logging
 
 public final class PublisherDriver: Driver {
 
     var rawClient: Google_Pubsub_V1_PublisherClient!
+
+    let logger = Logger(label: "Pub/Sub Publisher")
 
     public required init(eventLoopGroupProvider: EventLoopGroupProvider) throws {
         try super.init(eventLoopGroupProvider: eventLoopGroupProvider)

@@ -1,10 +1,13 @@
 import Foundation
 import GRPC
 import NIO
+import Logging
 
 public final class SubscriberDriver: Driver {
 
     var rawClient: Google_Pubsub_V1_SubscriberClient!
+
+    let logger = Logger(label: "Pub/Sub Subscriber")
 
     public required init(eventLoopGroupProvider: EventLoopGroupProvider) throws {
         try super.init(eventLoopGroupProvider: eventLoopGroupProvider)
@@ -28,8 +31,9 @@ public final class SubscriberDriver: Driver {
     // MARK: - Shutdown
 
     override public func shutdown() {
+        logger.info("Shutting down...")
+
         if !subscribers.isEmpty {
-            print("Shutting down Pub/Sub subscribers...")
             subscribers.forEach { $0.isShutdown = true }
         }
 

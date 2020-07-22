@@ -37,7 +37,11 @@ public final class PubSubPublisher {
             .hop(to: eventLoop)
             .map { response in
                 var messages = messages
-                response.messageIds.enumerated().forEach { messages[$0.offset].id = $0.element }
+                for (index, id) in response.messageIds.enumerated(){
+                    self.driver.logger.info("Published message", metadata: ["message-id": .string(id)])
+
+                    messages[index].id = id
+                }
                 return messages
             }
     }
