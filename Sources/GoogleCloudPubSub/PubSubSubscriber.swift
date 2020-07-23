@@ -94,7 +94,7 @@ public final class PubSubSubscriber<Element: Codable> {
                     verifiedSubscriptions.append(hashValue)
                     promise.succeed(())
                 case .failure(let error):
-                    if "\(error)" == "alreadyExists (6): Subscription already exists" {
+                    if "\(error)".hasPrefix("alreadyExists (6):") {
                         verifiedSubscriptions.append(hashValue)
                         promise.succeed(())
                     } else {

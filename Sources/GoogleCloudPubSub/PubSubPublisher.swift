@@ -44,7 +44,7 @@ public final class PubSubPublisher {
                     Self.verifiedTopics.append(hashValue)
                     promise.succeed(())
                 case .failure(let error):
-                    if "\(error)" == "alreadyExists (6): Topic already exists" {
+                    if "\(error)".hasPrefix("alreadyExists (6):") {
                         Self.verifiedTopics.append(hashValue)
                         promise.succeed(())
                     } else {
